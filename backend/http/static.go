@@ -61,6 +61,8 @@ func handleWithStaticData(w http.ResponseWriter, r *http.Request, file, contentT
 		"MediaAvailable":    config.Integrations.Media.FfmpegPath != "",
 		"MuPdfAvailable":    config.Server.MuPdfAvailable,
 		"UpdateAvailable":   utils.GetUpdateAvailableUrl(),
+		"WSIUrl":            strings.TrimSuffix(settings.Config.Integrations.WSI.URL, "/"),
+		"WSIAvailable":      settings.Config.Integrations.WSI.URL != "",
 	}
 
 	b, err := json.Marshal(data)

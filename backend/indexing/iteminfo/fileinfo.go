@@ -31,6 +31,7 @@ type ExtendedFileInfo struct {
 	Checksums    map[string]string `json:"checksums,omitempty"`    // checksums for the file
 	Token        string            `json:"token,omitempty"`        // token for the file -- used for sharing
 	OnlyOfficeId string            `json:"onlyOfficeId,omitempty"` // id for onlyoffice files
+	IsWSI        bool              `json:"isWSI,omitempty"`
 	Source       string            `json:"source"`                 // associated index source for the file
 	RealPath     string            `json:"-"`
 }

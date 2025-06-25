@@ -48,6 +48,7 @@ type Server struct {
 type Integrations struct {
 	OnlyOffice OnlyOffice `json:"office" validate:"omitempty"`
 	Media      Media      `json:"media" validate:"omitempty"`
+	WSI        WSI        `json:"wsi" validate:"omitempty"`
 }
 
 // onlyoffice secret is stored in the local.json file
@@ -56,6 +57,15 @@ type OnlyOffice struct {
 	Url         string `json:"url" validate:"required"` // The URL to the OnlyOffice Document Server, needs to be accessible to the user.
 	InternalUrl string `json:"internalUrl"`             // An optional internal address that the filebrowser server can use to communicate with the OnlyOffice Document Server, could be useful to bypass proxy.
 	Secret      string `json:"secret" validate:"required"`
+}
+
+// WSI holds the configuration for the WSI tile server integration.
+type WSI struct {
+	// The URL to the slideserver, accessible to the user's browser.
+	URL string `json:"url" validate:"omitempty"`
+	// An optional internal address that the filebrowser server can use to
+	// communicate with the slideserver, useful for health checks.
+	InternalUrl string `json:"internalUrl,omitempty"`
 }
 
 type Media struct {

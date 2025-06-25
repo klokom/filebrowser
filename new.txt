@@ -1,0 +1,82 @@
+diff --git a/backend/cmd/wsi.go b/backend/cmd/wsi.go
+new file mode 100644
+index 00000000..bf2e8946
+--- /dev/null
++++ b/backend/cmd/wsi.go
+@@ -0,0 +1,37 @@
++// in backend/cmd/wsi.go
++
++package cmd
++
++import (
++	"net/http"
++	"time"
++
++	"github.com/gtsteffaniak/filebrowser/backend/common/settings"
++	"github.com/gtsteffaniak/go-logger/logger"
++)
++
++// validateWSIIntegration checks if the configured slideserver is available.
++func validateWSIIntegration() {
++	if settings.Config.Integrations.WSI.URL != "" {
++		url := settings.Config.Integrations.WSI.URL
++		if settings.Config.Integrations.WSI.InternalUrl != "" {
++			url = settings.Config.Integrations.WSI.InternalUrl
++		}
++
++		client := &http.Client{
++			Timeout: 5 * time.Second,
++		}
++		// Assuming your slideserver has a health check endpoint at /health or similar.
++		// If not, a simple GET to the base URL can suffice.
++		resp, err := client.Get(url)
++		if err != nil {
++			logger.Warningf("Could not reach the WSI slideserver at %s: %v", url, err)
++			return
++		}
++		defer resp.Body.Close()
++		if resp.StatusCode != http.StatusOK {
++			logger.Warningf("WSI slideserver at %s returned non-OK status: %s", url, resp.Status)
++		}
++		logger.Info("WSI Integration Enabled")
++	}
++}
+\ No newline at end of file
+diff --git a/backend/preview/wsi.go b/backend/preview/wsi.go
+new file mode 100644
+index 00000000..2077fa68
+--- /dev/null
++++ b/backend/preview/wsi.go
+@@ -0,0 +1,31 @@
++// in backend/preview/wsi.go
++
++package preview
++
++import (
++	"strings"
++)
++
++// SupportedWSITypes is a map of file extensions for Whole Slide Images.
++var SupportedWSITypes = map[string]bool{
++	".svs":    true,
++	".ndpi":   true,
++	".ome.tif":true,
++	".ome.tiff":true,
++	".vmsi":   true,
++	".vmu":    true,
++	".scn":    true,
++	".mrxs":   true,
++	".bif":    true,
++}
++
++// IsWSI checks if the file is a supported WSI type by its name.
++func IsWSI(name string) bool {
++	lowerName := strings.ToLower(name)
++	for ext := range SupportedWSITypes {
++		if strings.HasSuffix(lowerName, ext) {
++			return true
++		}
++	}
++	return false
++}
+\ No newline at end of file
