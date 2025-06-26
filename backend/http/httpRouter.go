@@ -125,6 +125,10 @@ func StartHttp(ctx context.Context, storage *storage.Storage, shutdownComplete c
 	api.HandleFunc("GET /onlyoffice/config", withUser(onlyofficeClientConfigGetHandler))
 	api.HandleFunc("POST /onlyoffice/callback", withUser(onlyofficeCallbackHandler))
 	api.HandleFunc("GET /onlyoffice/getToken", withUser(onlyofficeGetTokenHandler))
+	if settings.Config.Integrations.WSI.URL != "" {
+        // We pass the standalone wsiProxyHandler function to the middleware.
+        api.HandleFunc("GET /wsi/", withUser(wsiProxyHandler))
+    }
 
 	api.HandleFunc("GET /search", withUser(searchHandler))
 	apiPath := config.Server.BaseURL + "api"

@@ -25,6 +25,7 @@ import (
 	"github.com/gtsteffaniak/filebrowser/backend/indexing"
 	"github.com/gtsteffaniak/filebrowser/backend/indexing/iteminfo"
 	"github.com/gtsteffaniak/go-logger/logger"
+	"github.com/gtsteffaniak/filebrowser/backend/preview"
 )
 
 func FileInfoFaster(opts iteminfo.FileOptions) (iteminfo.ExtendedFileInfo, error) {

@@ -28,6 +28,7 @@ import OnlyOfficeEditor from "./files/OnlyOfficeEditor.vue";
 import EpubViewer from "./files/EpubViewer.vue";
 import DocViewer from "./files/DocViewer.vue";
 import MarkdownViewer from "./files/MarkdownViewer.vue";
+//import WSIViewer from "./files/WSIViewer.vue";
 import { state, mutations, getters } from "@/store";
 import { url } from "@/utils";
 import { notify } from "@/notify";
@@ -48,6 +49,7 @@ export default {
     OnlyOfficeEditor,
     MarkdownViewer,
     PopupPreview,
+    //WSIViewer,
   },
   data() {
     return {

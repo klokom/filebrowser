@@ -1,0 +1,375 @@
+=== ./content.txt ===
+=== ./Dockerfile.slim ===
+FROM golang:alpine AS base
+ARG VERSION
+ARG REVISION
+WORKDIR /app
+COPY ./backend ./
+RUN apk update && apk add upx
+RUN go build -ldflags="-w -s \
+  -X 'github.com/gtsteffaniak/filebrowser/backend/common/version.Version=${VERSION}' \
+  -X 'github.com/gtsteffaniak/filebrowser/backend/common/version.CommitSHA=${REVISION}'" \
+  -o filebrowser .
+RUN upx filebrowser
+
+FROM node:lts-slim AS nbuild
+WORKDIR /app
+COPY ./frontend/package.json ./
+RUN npm i --maxsockets 1
+COPY  ./frontend/ ./
+RUN npm run build-docker
+
+FROM alpine:latest
+ENV FILEBROWSER_NO_EMBEDED="true"
+ENV FILEBROWSER_DATABASE="/home/filebrowser/data/database.db"
+ENV PATH="$PATH:/home/filebrowser"
+RUN apk --no-cache add ca-certificates mailcap tzdata
+RUN adduser -D -s /bin/true -u 1000 filebrowser
+USER filebrowser
+WORKDIR /home/filebrowser
+COPY --from=base --chown=filebrowser:1000 /app/filebrowser ./
+COPY --from=base --chown=filebrowser:1000 /app/config.yaml ./data/config.yaml
+COPY --from=nbuild --chown=filebrowser:1000 /app/dist/ ./http/dist/
+## sanity checks
+RUN [ "filebrowser", "version" ]
+USER root
+# exposing default port for auto discovery.
+EXPOSE 80
+ENTRYPOINT [ "./filebrowser" ]
+=== ./Dockerfile ===
+FROM gtstef/ffmpeg:7.1.1-decode AS ffmpeg
+FROM golang:alpine AS base
+ARG VERSION
+ARG REVISION
+WORKDIR /app
+COPY ./backend ./
+RUN apk update && apk add --no-cache gcc musl-dev upx
+ENV CGO_ENABLED=1
+RUN go build -tags mupdf,musl -ldflags="-w -s \
+  -X 'github.com/gtsteffaniak/filebrowser/backend/common/version.Version=${VERSION}' \
+  -X 'github.com/gtsteffaniak/filebrowser/backend/common/version.CommitSHA=${REVISION}'" \
+  -o filebrowser .
+RUN upx filebrowser
+
+FROM node:lts-slim AS nbuild
+WORKDIR /app
+COPY ./frontend/package.json ./
+RUN npm i --maxsockets 1
+COPY  ./frontend/ ./
+RUN npm run build-docker
+
+FROM alpine:latest
+COPY --from=ffmpeg [ "/ffmpeg", "/ffprobe", "/usr/local/bin/" ]
+ENV FILEBROWSER_FFMPEG_PATH="/usr/local/bin/"
+ENV FILEBROWSER_DATABASE="/home/filebrowser/data/database.db"
+ENV FILEBROWSER_NO_EMBEDED="true"
+ENV PATH="$PATH:/home/filebrowser"
+RUN apk --no-cache add ca-certificates mailcap tzdata
+RUN adduser -D -s /bin/true -u 1000 filebrowser
+USER filebrowser
+WORKDIR /home/filebrowser
+COPY --from=base --chown=filebrowser:1000 /app/filebrowser ./
+COPY --from=base --chown=filebrowser:1000 /app/config.yaml ./data/config.yaml
+COPY --from=nbuild --chown=filebrowser:1000 /app/dist/ ./http/dist/
+## sanity checks
+RUN [ "filebrowser", "version" ]
+RUN [ "ffmpeg", "-version" ]
+RUN [ "ffprobe", "-version" ]
+USER root
+# exposing default port for auto discovery.
+EXPOSE 80
+ENTRYPOINT [ "./filebrowser" ]
+=== ./Dockerfile.playwright-base ===
+FROM node:22-slim
+WORKDIR /app/frontend
+RUN npm i @playwright/test
+RUN npx playwright install --with-deps firefox
+=== ./Dockerfile.playwright-general ===
+FROM gtstef/playwright-base
+WORKDIR /app
+COPY [ "./_docker/src/general/", "./" ]
+WORKDIR /app/frontend
+COPY [ "./frontend/", "./" ]
+WORKDIR /app/backend/
+COPY [ "./backend/filebrowser*", "./"]
+RUN ./filebrowser & sleep 2 && cd ../frontend && npx playwright test
+=== ./docker-compose.yaml ===
+services:
+  nginx-proxy-auth:
+    image: nginx
+    container_name: nginx-proxy-auth
+    ports:
+      - "80:80"
+    volumes:
+      - ./src/proxy/backend/default.conf:/etc/nginx/conf.d/default.conf
+  filebrowser:
+    hostname: filebrowser
+    volumes:
+      - '../frontend:/home/frontend'
+      - "./src/proxy/backend/config.yaml:/home/filebrowser/config.yaml"
+    build:
+      context: ../
+      dockerfile: ./_docker/Dockerfile
+=== ./Dockerfile.playwright-proxy ===
+FROM gtstef/playwright-base
+WORKDIR /app
+COPY [ "./_docker/src/proxy/", "./" ]
+WORKDIR /app/frontend
+COPY [ "./frontend/", "./" ]
+WORKDIR /app/backend/
+COPY [ "./backend/filebrowser", "./"]
+RUN apt update && apt install nginx -y
+RUN mv default.conf /etc/nginx/conf.d/default.conf
+RUN sed -i 's/filebrowser/localhost/g' /etc/nginx/conf.d/default.conf
+RUN nginx & ./filebrowser & sleep 2 && cd ../frontend && npx playwright test
+=== ./Dockerfile.playwright-noauth ===
+FROM gtstef/playwright-base
+WORKDIR /app
+COPY [ "./_docker/src/noauth/", "./" ]
+WORKDIR /app/frontend
+COPY [ "./frontend/", "./" ]
+WORKDIR /app/backend/
+COPY [ "./backend/filebrowser", "./"]
+RUN ./filebrowser & sleep 2 && cd ../frontend && npx playwright test
+=== ./src/general/backend/config.yaml ===
+server:
+  port: 80
+  baseURL:  "/"
+  logging:
+    - levels: "info|error|debug"
+  sources:
+    - path: "../frontend/tests/playwright-files"
+    - path: "."
+      name: "docker"
+frontend:
+  name: "Graham's Filebrowser"
+  disableDefaultLinks: true
+  externalLinks:
+    - text: "A playwright test"
+      url: "https://playwright.dev/"
+      title: "Playwright"=== ./src/general/frontend/playwright.config.ts ===
+import { defineConfig, devices } from "@playwright/test";
+
+/**
+ * Read environment variables from file.
+ * https://github.com/motdotla/dotenv
+ */
+// require('dotenv').config();
+
+/**
+ * See https://playwright.dev/docs/test-configuration.
+ */
+export default defineConfig({
+  globalSetup: "./tests-playwright/global-setup",
+  timeout: 5000,
+  testDir: "./tests-playwright/general",
+  /* Run tests in files in parallel */
+  fullyParallel: false,
+  /* Fail the build on CI if you accidentally left test.only in the source code. */
+  forbidOnly: false,
+  /* Retry on CI only */
+  retries: 2,
+  /* Opt out of parallel tests on CI. */
+  workers: 1, // required for now! todo parallel some tests
+  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
+  reporter: "line",
+  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  use: {
+    actionTimeout: 5000,
+    storageState: "loginAuth.json",
+    /* Base URL to use in actions like `await page.goto('/')`. */
+    baseURL: "http://127.0.0.1/",
+
+    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    trace: "on-first-retry",
+
+    /* Set default locale to English (US) */
+    locale: "en-US",
+  },
+
+  /* Configure projects for major browsers */
+  projects: [
+    {
+      name: "firefox",
+      use: { ...devices["Desktop Firefox"] },
+    },
+  ],
+});
+=== ./src/noauth/backend/config.yaml ===
+server:
+  port: 80
+  baseURL:  "/files/"
+  logging:
+    - levels: "info|error|debug"
+  sources:
+    - path: "../frontend/tests/playwright-files"
+      config:
+        exclude:
+          folders:
+            - "excluded"
+
+auth:
+  methods:
+    noauth: true
+frontend:
+  name: "Graham's Filebrowser"
+  disableDefaultLinks: true
+  externalLinks:
+    - text: "A playwright test"
+      url: "https://playwright.dev/"
+      title: "Playwright"
+userDefaults:
+  permissions:
+   realtime: true=== ./src/noauth/frontend/playwright.config.ts ===
+import { defineConfig, devices } from "@playwright/test";
+
+/**
+ * Read environment variables from file.
+ * https://github.com/motdotla/dotenv
+ */
+// require('dotenv').config();
+
+/**
+ * See https://playwright.dev/docs/test-configuration.
+ */
+export default defineConfig({
+  globalSetup: "./tests-playwright/noauth-setup",
+  timeout: 5000,
+  testDir: "./tests-playwright/noauth",
+  /* Run tests in files in parallel */
+  fullyParallel: false,
+  /* Fail the build on CI if you accidentally left test.only in the source code. */
+  forbidOnly: false,
+  /* Retry on CI only */
+  retries: 2,
+  /* Opt out of parallel tests on CI. */
+  workers: 1, // required for now! todo parallel some tests
+  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
+  reporter: "line",
+  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  use: {
+    storageState: "noauth.json",
+    actionTimeout: 5000,
+    //storageState: "loginAuth.json",
+    /* Base URL to use in actions like `await page.goto('/')`. */
+    baseURL: "http://127.0.0.1",
+
+    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    trace: "on-first-retry",
+
+    /* Set default locale to English (US) */
+    locale: "en-US",
+  },
+
+  /* Configure projects for major browsers */
+  projects: [
+    {
+      name: "firefox",
+      use: { ...devices["Desktop Firefox"] },
+    },
+  ],
+});
+=== ./src/proxy/backend/default.conf ===
+
+map $remote_addr $uuid {
+    default "demo-${remote_addr}";
+}
+
+server {
+    listen 80;
+    server_name localhost 127.0.0.1;
+
+    location / {
+        proxy_set_header X-Username $uuid;
+        add_header X-Username $uuid;
+        proxy_pass http://filebrowser:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+=== ./src/proxy/backend/config.yaml ===
+server:
+  port: 8080
+  baseURL:  "/"
+  logging:
+    - levels: "info|error|debug"
+  sources:
+    - path: "../frontend/tests/playwright-files"
+      config:
+        defaultEnabled: true
+        createUserDir: true
+
+frontend:
+  name: "Graham's Filebrowser"
+  disableDefaultLinks: true
+  externalLinks:
+    - text: "A playwright test"
+      url: "https://playwright.dev/"
+      title: "Playwright"
+
+auth:
+  methods:
+    proxy:
+      enabled: true
+      header: "X-Username"
+      createUser: true
+      logoutRedirectUrl: "https://localhost/api/auth/logout2"
+
+userDefaults:
+  darkMode: true
+  disableSettings: false
+  singleClick: false
+  permissions:
+    admin: false
+    modify: true
+    share: false
+    api: false=== ./src/proxy/frontend/playwright.config.ts ===
+import { defineConfig, devices } from "@playwright/test";
+
+/**
+ * Read environment variables from file.
+ * https://github.com/motdotla/dotenv
+ */
+// require('dotenv').config();
+
+/**
+ * See https://playwright.dev/docs/test-configuration.
+ */
+export default defineConfig({
+  //globalSetup: "./global-setup",
+  timeout: 3000,
+  testDir: "./tests-playwright/proxy",
+  /* Run tests in files in parallel */
+  fullyParallel: false,
+  /* Fail the build on CI if you accidentally left test.only in the source code. */
+  forbidOnly: false,
+  /* Retry on CI only */
+  retries: 2,
+  /* Opt out of parallel tests on CI. */
+  workers: 1, // required for now! todo parallel some tests
+  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
+  reporter: "line",
+  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  use: {
+    actionTimeout: 3000,
+    //storageState: "loginAuth.json",
+    /* Base URL to use in actions like `await page.goto('/')`. */
+    baseURL: "http://127.0.0.1",
+
+    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    trace: "on-first-retry",
+
+    /* Set default locale to English (US) */
+    locale: "en-US",
+  },
+
+  /* Configure projects for major browsers */
+  projects: [
+    {
+      name: "firefox",
+      use: { ...devices["Desktop Firefox"] },
+    },
+  ],
+});

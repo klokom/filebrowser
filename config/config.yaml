@@ -1,0 +1,15 @@
+server:
+  port: 80
+  internalUrl: "http://filebrowser:80"
+  sources:
+    - path: /srv
+      name: main
+
+auth:
+  adminUsername: admin
+  adminPassword: admin
+
+integrations:
+  wsi:
+    url: "http://192.168.0.6:38080"
+    internalUrl: "http://slideserver:5000"

@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  filebrowser:
+    build:
+      context: .
+      dockerfile: _docker/Dockerfile
+    container_name: filebrowser_osdosintegrated
+    user: "0:0"
+    ports:
+      # Expose port 38080 on the host, mapping to port 80 in the container.
+      - "38080:80"
+    volumes:
+      - /mnt/images:/srv
+      - ./config:/config
+      - ./database:/database
+    environment:
+      FILEBROWSER_CONFIG: "/config/config.yaml"
+    restart: unless-stopped
+
+  slideserver:
+    # This service remains unchanged. It is accessible to the filebrowser
+    # service via its name 'slideserver' on the internal Docker network.
+    build:
+      context: ./slideserver
+    container_name: slideserver_integrated
+    volumes:
+      - /mnt/images:/srv:ro
+      - ./wsi-cache:/cache
+    restart: unless-stopped

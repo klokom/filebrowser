@@ -212,6 +212,8 @@ export const getters = {
           listingView = 'listingView'
         } else if (getters.onlyOfficeEnabled(state.req.name)) {
           listingView = 'onlyOfficeEditor'
+        // } else if (state.req.isWSI) {
+        //   listingView = 'WSIViewer'
         } else if (
           'content' in state.req &&
           state.req.type == 'text/markdown' &&

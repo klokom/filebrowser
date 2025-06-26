@@ -1,7 +1,8 @@
 <template>
   <div id="previewer" @mousemove="toggleNavigation" @touchstart="toggleNavigation">
     <div class="preview">
-      <ExtendedImage v-if="previewType == 'image' || pdfConvertable" :src="raw">
+      <WSIViewer v-if="isWSI" />
+      <ExtendedImage v-else-if="previewType == 'image' || pdfConvertable" :src="raw">
       </ExtendedImage>
       <audio
         v-else-if="previewType == 'audio'"
@@ -97,6 +98,8 @@ import { filesApi } from "@/api";
 import url from "@/utils/url.js";
 import throttle from "@/utils/throttle";
 import ExtendedImage from "@/components/files/ExtendedImage.vue";
+// IMPORT WSIViewer COMPONENT
+import WSIViewer from "./WSIViewer.vue";
 import { state, getters, mutations } from "@/store";
 import { getFileExtension } from "@/utils/files";
 import { convertToVTT } from "@/utils/subtitles";
@@ -106,6 +109,8 @@ export default {
   name: "preview",
   components: {
     ExtendedImage,
+    // REGISTER THE WSIViewer COMPONENT
+    WSIViewer,
   },
   data() {
     return {
@@ -124,6 +129,10 @@ export default {
     };
   },
   computed: {
+    // WSI COMPUTED PROPERTY
+    isWSI () {
+      return state.req.isWSI === true;
+    },
     autoPlay() {
       return state.user.preview.autoplayMedia;
     },
