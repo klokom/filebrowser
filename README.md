@@ -4,7 +4,7 @@ This is a fork of the excellent **[FileBrowser-Quantum](https://github.com/gtste
 
 This fork has been extended with a native integration for viewing Whole Slide Images (WSI) directly in the browser. It preserves all the functionality of the original FileBrowser while adding a seamless experience for viewing medical and research images in formats like `.svs`, `.ndpi`, and more, powered by OpenSeadragon.
 
-![WSI Viewer Screenshot](https://user-images.githubusercontent.com/1035832/203498953-27351a9e-062e-4a25-9b34-a034293f350c.png) ## Key Features
+![WSI Viewer Screenshot](WSI-Screenshot.png) ## Key Features
 
 * **All Original Features:** Retains 100% of the functionality from the upstream FileBrowser-Quantum.
 * **Native WSI Viewer:** Adds a fully integrated viewer for Whole Slide Images based on OpenSeadragon, which loads when a compatible file is selected.
