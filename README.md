@@ -97,3 +97,103 @@ services:
     restart: unless-stopped
 ```
 
+On Machine A: The FileBrowser Server
+This machine will run the main FileBrowser user interface and backend. It will proxy requests to the slideserver on Machine B.
+
+Required Files:
+
+Your complete FileBrowser project folder.
+
+A docker-compose.yml file.
+
+Your config/config.yaml file.
+
+docker-compose.yml for Machine A:
+
+This file should only contain the filebrowser service.
+
+YAML
+
+version: "3.8"
+
+services:
+  filebrowser:
+    build:
+      context: .
+      dockerfile: _docker/Dockerfile
+    container_name: filebrowser_osdosintegrated
+    user: "0:0"
+    ports:
+      - "38080:80"
+    volumes:
+      # These volumes allow you to browse the files, but are not strictly
+      # needed for the viewer itself, which relies on the slideserver.
+      - /mnt/images:/srv/main
+      - /mnt/old-images:/srv/old-images
+      - ./config:/config
+      - ./database:/database
+    environment:
+      FILEBROWSER_CONFIG: "/config/config.yaml"
+    restart: unless-stopped
+config.yaml for Machine A:
+
+The internalUrl for the WSI integration must be updated to point to the IP address of Machine B.
+
+YAML
+
+# In ./config/config.yaml on Machine A
+
+integrations:
+  wsi:
+    # This URL points to Machine A (itself), as it's what the user's browser accesses.
+    url: "http://<IP_OF_MACHINE_A>:38080"
+    
+    # This URL points to the real network IP and port of your dedicated slideserver.
+    internalUrl: "http://<IP_OF_MACHINE_B>:5000"
+On Machine B: The Dedicated SlideServer
+This machine's only job is to process images and serve tiles.
+
+Required Files:
+
+A new project folder containing:
+
+The slideserver/ directory (with app.py, tiff_handler.py, etc.).
+
+A new docker-compose.yml file.
+
+docker-compose.yml for Machine B:
+
+This file defines and exposes the slideserver service.
+
+YAML
+
+# On Machine B: docker-compose.yml
+
+version: "3.8"
+
+services:
+  slideserver:
+    build: ./slideserver
+    container_name: slideserver_only
+    # Expose port 5000 to the host network so Machine A can reach it.
+    ports:
+      - "5000:5000"
+    volumes:
+      # This machine MUST have access to the same image files via a network share (NFS, etc.)
+      - /path/to/shared/images:/srv/main:ro
+      - /path/to/shared/old-images:/srv/old-images:ro
+      - ./wsi-cache:/cache
+    restart: unless-stopped
+
+volumes:
+  wsi-cache:
+
+Important Considerations
+Shared Storage: For this to work, Machine B must have access to the exact same image files as Machine A. You must set up a network file share (like NFS or Samba/CIFS) and mount the directories on both machines.
+
+Security: By exposing port 5000 on Machine B, the slideserver is now accessible on your network. It is highly recommended to use a firewall on Machine B to restrict access to port 5000 so that only the IP address of Machine A is allowed to connect.
+
+To Launch
+On Machine B, navigate to its project directory and run docker-compose up --build -d.
+
+On Machine A, navigate to its project directory and run docker-compose up --build -d.
