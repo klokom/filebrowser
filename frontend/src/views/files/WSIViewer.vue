@@ -1,38 +1,54 @@
 <template>
-  <div id="openseadragon-container" ref="osdContainer"></div>
+  <div id="openseadragon-container" ref="osdContainer">
+    <div v-if="showMetadata && hasMetadata" class="card floating wsi-metadata-card">
+      <div class="card-title">
+        <h2>Slide Metadata</h2>
+        <button @click="toggleMetadataDisplay" class="action" aria-label="Close" title="Close">
+          <i class="material-icons">close</i>
+        </button>
+      </div>
+
+      <div class="card-content">
+        <p v-for="([key, value]) in metadataForDisplay" :key="key">
+          <strong>{{ key.replace('aperio.', '').replace('openslide.', '') }}:</strong>
+          <span>{{ value }}</span>
+        </p>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
-// in frontend/src/views/files/WSIViewer.vue
-
 import OpenSeadragon from 'openseadragon';
-// IMPORT 'mutations' and 'state' from the store
 import { state, mutations } from "@/store";
-// IMPORT the addScalebar function from our new utility file.
 import { addScalebar } from '@/utils/scalebar.js';
-
-// function addScalebar(viewer, viewerDiv, metadata) {
-//   console.log("Scalebar placeholder with metadata:", metadata);
-// }
+import { eventBus } from "@/store/eventBus";
 
 export default {
   name: 'WSIViewer',
   data: () => ({
-    viewer: null
+    viewer: null,
+    showMetadata: false,
   }),
   computed: {
     req() {
       return state.req;
+    },
+    hasMetadata() {
+      return this.req.wsiMetadata && Object.keys(this.req.wsiMetadata).length > 0;
+    },
+    metadataForDisplay() {
+      if (!this.hasMetadata) return [];
+      return Object.entries(this.req.wsiMetadata)
+        .filter(([key]) => key.startsWith('aperio.') || key === 'openslide.mpp-x' || key === 'openslide.objective-power')
+        .slice(0, 20);
     }
   },
-  // THIS IS THE NEW MOUNTED HOOK
   mounted() {
-    // Tell the store to clear any previous selections
     mutations.resetSelected();
-    // Tell the store that this file is the currently selected item
     mutations.addSelected(this.req);
-    // Now initialize the viewer
     this.initializeViewer();
+    eventBus.on('toggle-wsi-metadata', this.toggleMetadataDisplay);
   },
   watch: {
     req: 'initializeViewer'
@@ -41,53 +57,28 @@ export default {
     if (this.viewer) {
       this.viewer.destroy();
     }
+    eventBus.off('toggle-wsi-metadata', this.toggleMetadataDisplay);
   },
   methods: {
-    // The initializeViewer() method remains unchanged.
+    toggleMetadataDisplay() {
+      this.showMetadata = !this.showMetadata;
+    },
     initializeViewer() {
-      if (this.viewer) {
-        this.viewer.destroy();
-      }
-      const { WSIUrl, BaseURL: baseURL } = window.FileBrowser;
-      if (!WSIUrl) {
-        console.error("WSI integration URL is not defined in the backend configuration.");
-        if (this.$refs.osdContainer) {
-          this.$refs.osdContainer.innerHTML = '<p style="text-align: center; color: white;">⚠️ WSI Viewer not configured.</p>';
-        }
-        return;
-      }
-      const giteaPrefixUrl = 'https://192.168.0.184:3100/miho/openseadragon-icons/raw/branch/main/images/';
+      if (this.viewer) { this.viewer.destroy(); }
+      const { BaseURL: baseURL } = window.FileBrowser;
       const dziUrl = `${baseURL}api/wsi${this.req.path}.dzi`;
-      const metadataUrl = `${baseURL}api/wsi${this.req.path}.metadata`;
-      console.log(`Initializing WSI viewer for: ${this.req.path}`);
-      console.log(`Requesting DZI from: ${dziUrl}`);
+      const metadata = this.req.wsiMetadata || {};
+      const giteaPrefixUrl = 'https://192.168.0.184:3100/miho/openseadragon-icons/raw/branch/main/images/';
       this.viewer = OpenSeadragon({
         element: this.$refs.osdContainer,
-        prefixUrl: giteaPrefixUrl,
         showNavigator: true,
         tileSources: dziUrl,
+        prefixUrl: giteaPrefixUrl
       });
       this.viewer.addHandler("open-failed", (event) => {
-        console.error("OpenSeadragon failed to open:", event);
-        if (this.$refs.osdContainer) {
-          this.$refs.osdContainer.innerHTML = '<p style="text-align: center; color: white;">⚠️ Could not load slide image.</p>';
-        }
+        if (this.$refs.osdContainer) { this.$refs.osdContainer.innerHTML = '<p style="text-align: center; color: white;">⚠️ Could not load slide image.</p>'; }
       });
-      fetch(metadataUrl)
-        .then(res => {
-          if (!res.ok) {
-            return Promise.reject(`Metadata fetch failed: ${res.status} ${res.statusText}`);
-          }
-          return res.json();
-        })
-        .then(metadata => {
-          console.log("Metadata:", metadata);
-          addScalebar(this.viewer, this.$refs.osdContainer, metadata);
-        })
-        .catch(err => {
-          console.warn("❌ Metadata fetch error:", err);
-          addScalebar(this.viewer, this.$refs.osdContainer, {});
-        });
+      addScalebar(this.viewer, this.$refs.osdContainer, metadata);
     }
   }
 }
@@ -98,27 +89,47 @@ export default {
   width: 100%;
   height: 100%;
   background-color: #000;
-}
-</style>
-<style>
-/* By removing 'scoped', these styles become global and can correctly
-   target the dynamically created scalebar element. */
-
-#custom-scalebar {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    color: white;
-    font: 12px sans-serif;
-    background: rgba(0,0,0,0.5);
-    padding: 4px 8px;
-    border-radius: 4px;
-    pointer-events: none;
+  position: relative;
 }
 
-#custom-scalebar .bar {
-    height: 2px;
-    background: white;
-    margin-bottom: 4px;
+/* New styles for the metadata card, inspired by Info.vue */
+.wsi-metadata-card {
+  position: absolute;
+  top: 70px;
+  left: 15px;
+  max-width: 380px;
+  max-height: calc(100% - 140px); /* Adjust to not overlap with other controls */
+  z-index: 10; /* Ensure it's above the viewer canvas */
+  display: flex;
+  flex-direction: column;
+}
+
+.wsi-metadata-card .card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.wsi-metadata-card .card-content {
+  overflow-y: auto;
+  padding-right: 1.5em; /* Add some padding for the scrollbar */
+}
+
+.wsi-metadata-card .card-content p {
+  margin: 0 0 0.5em 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wsi-metadata-card .card-content strong {
+  text-transform: capitalize;
+}
+
+.wsi-metadata-card .card-title .action {
+  padding: 0;
+  width: 2em;
+  height: 2em;
 }
 </style>

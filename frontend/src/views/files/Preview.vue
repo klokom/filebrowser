@@ -2,6 +2,7 @@
   <div id="previewer" @mousemove="toggleNavigation" @touchstart="toggleNavigation">
     <div class="preview">
       <WSIViewer v-if="isWSI" />
+      
       <ExtendedImage v-else-if="previewType == 'image' || pdfConvertable" :src="raw">
       </ExtendedImage>
       <audio
@@ -100,6 +101,8 @@ import throttle from "@/utils/throttle";
 import ExtendedImage from "@/components/files/ExtendedImage.vue";
 // IMPORT WSIViewer COMPONENT
 import WSIViewer from "./WSIViewer.vue";
+// IMPORT TIFFViewer COMPONENT
+// import TiffViewer from "./TiffViewer.vue";
 import { state, getters, mutations } from "@/store";
 import { getFileExtension } from "@/utils/files";
 import { convertToVTT } from "@/utils/subtitles";
@@ -111,6 +114,8 @@ export default {
     ExtendedImage,
     // REGISTER THE WSIViewer COMPONENT
     WSIViewer,
+    // REGISTER THE TiffViewer COMPONENT
+    // TiffViewer,
   },
   data() {
     return {
@@ -129,9 +134,19 @@ export default {
     };
   },
   computed: {
-    // WSI COMPUTED PROPERTY
-    isWSI () {
-      return state.req.isWSI === true;
+    isWSI() {
+      const name = state.req.name?.toLowerCase() || '';
+
+      // This is true if the backend identified it (e.g., .svs, .ndpi).
+      const flaggedAsWSI = state.req.isWSI === true;
+
+      // This is true for .tif or .tiff, but specifically FALSE for ome.tif(f).
+      const isTiffExtension = name.endsWith('.tif') || name.endsWith('.tiff');
+      const isOmeTiff = name.includes('ome.tif');
+      const isStandardTiff = isTiffExtension && !isOmeTiff;
+
+      // The viewer should load if it's a backend-flagged WSI OR a standard TIFF.
+      return flaggedAsWSI || isStandardTiff;
     },
     autoPlay() {
       return state.user.preview.autoplayMedia;

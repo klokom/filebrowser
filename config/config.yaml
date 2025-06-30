@@ -1,15 +1,26 @@
+# In ./config/config.yaml
+
 server:
   port: 80
   internalUrl: "http://filebrowser:80"
   sources:
+    # This single source path works because both host directories
+    # are mounted inside the /srv path in the container.
     - path: /srv
-      name: main
+      name: All Images
 
 auth:
+  # The username is set here.
   adminUsername: admin
-  adminPassword: admin
+  # The password can be a placeholder; it will be overridden by the
+  # ADMIN_PASSWORD variable from your .env file at startup.
+  adminPassword: "placeholder_password"
 
 integrations:
   wsi:
+    # IMPORTANT: This URL must be manually kept in sync with your .env file.
+    # It must use the same IP/hostname and port.
     url: "http://192.168.0.6:38080"
+    
+    # This internal URL is for container-to-container communication.
     internalUrl: "http://slideserver:5000"

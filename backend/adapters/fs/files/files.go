@@ -76,8 +76,18 @@ func FileInfoFaster(opts iteminfo.FileOptions) (iteminfo.ExtendedFileInfo, error
 	response.RealPath = realPath
 	response.Source = opts.Source
 	if preview.IsWSI(response.Name) {
-        response.IsWSI = true
-    }
+		response.IsWSI = true
+		// Get the file's path relative to the source root
+		// CORRECTED: Use index.Path instead of index.Config.Path
+		relativePath := strings.TrimPrefix(response.RealPath, index.Path)
+
+		meta, err := preview.GetWSIMetadata(relativePath)
+		if err != nil {
+			logger.Debugf("Could not get WSI metadata for %s: %v", response.Name, err)
+		} else {
+			response.WSIMetadata = meta
+		}
+	}
 	if settings.Config.Integrations.OnlyOffice.Secret != "" && info.Type != "directory" && iteminfo.IsOnlyOffice(info.Name) {
 		response.OnlyOfficeId = generateOfficeId(realPath)
 	}

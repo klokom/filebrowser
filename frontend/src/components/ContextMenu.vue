@@ -108,6 +108,9 @@
     <action v-if="showEdit" icon="edit" :label="$t('buttons.edit')" @action="edit()" />
     <action v-if="showSave" icon="save" :label="$t('buttons.save')" @action="save()" />
     <action v-if="showDelete" icon="delete" :label="$t('buttons.delete')" show="delete" />
+    <action v-if="isWSI" icon="info" label="Metadata" show="WSImetadata" />
+
+
   </div>
 </template>
 
@@ -145,6 +148,9 @@ export default {
     },
     showDelete() {
       return state.user.permissions.modify && this.isPreview;
+    },
+    isWSI() {
+      return state.req.isWSI === true;
     },
     isPreview() {
       const cv = getters.currentView();
@@ -220,6 +226,7 @@ export default {
     },
   },
   methods: {
+    
     startShowCreate() {
       this.showCreate = true;
     },
@@ -228,6 +235,9 @@ export default {
     },
     showHover(value) {
       return mutations.showHover(value);
+    },
+    toggleMetadata() {
+    eventBus.emit("toggle-wsi-metadata");
     },
     setPositions() {
       if (state.selected.length > 0) {

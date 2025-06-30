@@ -22,6 +22,7 @@ import NewDir from "./NewDir.vue";
 import Replace from "./Replace.vue";
 import ReplaceRename from "./ReplaceRename.vue";
 import Share from "./Share.vue";
+import WSImetadata from "./WSImetadata.vue";
 import Upload from "./Upload.vue";
 import ShareDelete from "./ShareDelete.vue";
 import DeleteUser from "./DeleteUser.vue";
@@ -42,6 +43,7 @@ export default {
     Move,
     Copy,
     Share,
+    WSImetadata,
     NewFile,
     NewDir,
     Help,

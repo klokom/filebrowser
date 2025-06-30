@@ -6,6 +6,15 @@ FROM python:3.11-slim
 
 # Install the essential OpenSlide C library from the Debian repositories
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libvips-dev \
+    libvips42 \
+    libtiff5-dev \
+    libjpeg62-turbo-dev \
+    zlib1g-dev \
+    liblcms2-dev \
+    libwebp-dev \
+    libopenjp2-7-dev \
     openslide-tools \
     && rm -rf /var/lib/apt/lists/*
 
@@ -17,7 +26,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the Flask application code
-COPY app.py .
+COPY *.py .
 
 # Expose the port Gunicorn will run on
 EXPOSE 5000

@@ -3,7 +3,12 @@
 package preview
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
+	"github.com/gtsteffaniak/filebrowser/backend/common/settings"
 )
 
 // SupportedWSITypes is a map of file extensions for Whole Slide Images.
@@ -28,4 +33,30 @@ func IsWSI(name string) bool {
 		}
 	}
 	return false
+}
+func GetWSIMetadata(filePath string) (map[string]interface{}, error) {
+	internalURL := settings.Config.Integrations.WSI.InternalUrl
+	if internalURL == "" {
+		return nil, fmt.Errorf("slideserver internal URL is not configured")
+	}
+
+	encodedPath := url.PathEscape(strings.TrimPrefix(filePath, "/"))
+	fullURL := fmt.Sprintf("%s/wsi/%s.metadata", internalURL, encodedPath)
+
+	resp, err := http.Get(fullURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to request metadata from slideserver: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("slideserver returned non-200 status: %s", resp.Status)
+	}
+
+	var metadata map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&metadata); err != nil {
+		return nil, fmt.Errorf("failed to decode metadata JSON: %w", err)
+	}
+
+	return metadata, nil
 }
