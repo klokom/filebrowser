@@ -138,7 +138,8 @@ services:
       - ./database:/database
     environment:
       FILEBROWSER_CONFIG: "/config/config.yaml"
-    restart: unless-stopped```
+    restart: unless-stopped
+    ```
 `config.yaml` for Machine A:
 
 The `internalUrl` for the WSI integration must be updated to point to the IP address of Machine B.
@@ -153,7 +154,8 @@ integrations:
     url: "http://<IP_OF_MACHINE_A>:38080"
     
     # This URL points to the real network IP and port of your dedicated slideserver.
-    internalUrl: "http://<IP_OF_MACHINE_B>:5000"```
+    internalUrl: "http://<IP_OF_MACHINE_B>:5000"
+    ```
 
 **On Machine B: The Dedicated SlideServer**
 This machine's only job is to process images and serve tiles.
@@ -190,8 +192,9 @@ services:
       - ./wsi-cache:/cache
     restart: unless-stopped
 
-volumes:
-  wsi-cache:```
+#volumes:
+#  wsi-cache:
+  ```
 
 Important Considerations
 Shared Storage: For this to work, Machine B must have access to the exact same image files as Machine A. You must set up a network file share (like NFS or Samba/CIFS) and mount the directories on both machines.
