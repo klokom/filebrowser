@@ -116,7 +116,7 @@ Your `config/config.yaml` file.
 
 This file should only contain the filebrowser service.
 
-```YAML
+```yaml
 
 version: "3.8"
 
@@ -144,7 +144,7 @@ services:
 
 The `internalUrl` for the WSI integration must be updated to point to the IP address of Machine B.
 
-```YAML
+```yaml
 
 # In ./config/config.yaml on Machine A
 
@@ -172,7 +172,7 @@ A new `docker-compose.yml` file.
 
 This file defines and exposes the slideserver service.
 
-```YAML
+```yaml
 
 # On Machine B: docker-compose.yml
 
