@@ -24,6 +24,7 @@ rice-box.go
 /backend/srv
 /backend/http/dist
 /backend/http/embed/*
+/wsi-cache
 
 .DS_Store
 node_modules
