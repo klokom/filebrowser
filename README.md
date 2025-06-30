@@ -97,6 +97,7 @@ services:
     restart: unless-stopped
 ```
 **Advanced Deployment: Multi-Machine Setup**
+
 For improved performance and to distribute processing load, you can run the slideserver on a separate, dedicated machine. This is ideal if tile generation for large TIFF files is consuming too many resources on your main server.
 
 This setup requires two machines on the same network.
@@ -139,7 +140,8 @@ services:
     environment:
       FILEBROWSER_CONFIG: "/config/config.yaml"
     restart: unless-stopped
-    ```
+  ```
+
 `config.yaml` for Machine A:
 
 The `internalUrl` for the WSI integration must be updated to point to the IP address of Machine B.
@@ -155,7 +157,7 @@ integrations:
     
     # This URL points to the real network IP and port of your dedicated slideserver.
     internalUrl: "http://<IP_OF_MACHINE_B>:5000"
-    ```
+  ```
 
 **On Machine B: The Dedicated SlideServer**
 This machine's only job is to process images and serve tiles.
