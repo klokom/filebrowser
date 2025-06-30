@@ -96,23 +96,27 @@ services:
       - ./wsi-cache:/cache
     restart: unless-stopped
 ```
+**Advanced Deployment: Multi-Machine Setup**
+For improved performance and to distribute processing load, you can run the slideserver on a separate, dedicated machine. This is ideal if tile generation for large TIFF files is consuming too many resources on your main server.
 
-On Machine A: The FileBrowser Server
+This setup requires two machines on the same network.
+
+**On Machine A: The FileBrowser Server**
 This machine will run the main FileBrowser user interface and backend. It will proxy requests to the slideserver on Machine B.
 
 Required Files:
 
 Your complete FileBrowser project folder.
 
-A docker-compose.yml file.
+A `docker-compose.yml` file.
 
-Your config/config.yaml file.
+Your `config/config.yaml` file.
 
-docker-compose.yml for Machine A:
+`docker-compose.yml` for Machine A:
 
 This file should only contain the filebrowser service.
 
-YAML
+```YAML
 
 version: "3.8"
 
@@ -134,12 +138,12 @@ services:
       - ./database:/database
     environment:
       FILEBROWSER_CONFIG: "/config/config.yaml"
-    restart: unless-stopped
-config.yaml for Machine A:
+    restart: unless-stopped```
+`config.yaml` for Machine A:
 
-The internalUrl for the WSI integration must be updated to point to the IP address of Machine B.
+The `internalUrl` for the WSI integration must be updated to point to the IP address of Machine B.
 
-YAML
+```YAML
 
 # In ./config/config.yaml on Machine A
 
@@ -149,23 +153,24 @@ integrations:
     url: "http://<IP_OF_MACHINE_A>:38080"
     
     # This URL points to the real network IP and port of your dedicated slideserver.
-    internalUrl: "http://<IP_OF_MACHINE_B>:5000"
-On Machine B: The Dedicated SlideServer
+    internalUrl: "http://<IP_OF_MACHINE_B>:5000"```
+
+**On Machine B: The Dedicated SlideServer**
 This machine's only job is to process images and serve tiles.
 
 Required Files:
 
 A new project folder containing:
 
-The slideserver/ directory (with app.py, tiff_handler.py, etc.).
+The slideserver/ directory (with `app.py`, `tiff_handler.py`, etc.).
 
-A new docker-compose.yml file.
+A new `docker-compose.yml` file.
 
-docker-compose.yml for Machine B:
+`docker-compose.yml` for Machine B:
 
 This file defines and exposes the slideserver service.
 
-YAML
+```YAML
 
 # On Machine B: docker-compose.yml
 
@@ -186,7 +191,7 @@ services:
     restart: unless-stopped
 
 volumes:
-  wsi-cache:
+  wsi-cache:```
 
 Important Considerations
 Shared Storage: For this to work, Machine B must have access to the exact same image files as Machine A. You must set up a network file share (like NFS or Samba/CIFS) and mount the directories on both machines.
