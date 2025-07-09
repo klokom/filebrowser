@@ -53,7 +53,7 @@ integrations:
 This project is designed to be run with Docker Compose
 1.  **Clone the repository:**
 ```bash
-git clone [https://192.168.0.184:3100/miho/filebrowser.git](https://192.168.0.184:3100/miho/filebrowser.git)
+git clone [https://github.com/klokom/filebrowser.git](https://github.com/klokom/filebrowser.git)
 cd filebrowser
 ```
 2.  **Configure:** Create a `./config/config.yaml` file with the content described above.
