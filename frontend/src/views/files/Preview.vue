@@ -107,7 +107,7 @@ import { state, getters, mutations } from "@/store";
 import { getFileExtension } from "@/utils/files";
 import { convertToVTT } from "@/utils/subtitles";
 import { getTypeInfo } from "@/utils/mimetype";
-
+import { muPdfAvailable } from "@/utils/constants";
 export default {
   name: "preview",
   components: {
@@ -158,6 +158,9 @@ export default {
       return isIOS && isSafari;
     },
     pdfConvertable() {
+      if (!muPdfAvailable) {
+        return false;
+      }
       const ext = "." + state.req.name.split(".").pop().toLowerCase(); // Ensure lowercase and dot
       const pdfConvertCompatibleFileExtensions = {
         ".xps": true,
@@ -303,7 +306,8 @@ export default {
             this.prev();
           }
           break;
-        case ("Escape", "Backspace"):
+        case "Escape":
+        case "Backspace":
           this.close();
           break;
       }
@@ -317,6 +321,7 @@ export default {
             if (playPromise !== undefined) {
               playPromise.catch((error) => {
                 if (this.$refs.player) {
+                  console.log("autoplay failed", error);
                   this.$refs.player.muted = true;
                   this.$refs.player.play();
                 }

@@ -86,10 +86,13 @@ func shareGetHandler(w http.ResponseWriter, r *http.Request, d *requestContext) 
 	}
 	scopePath := utils.JoinPathAsUnix(userscope, path)
 	s, err := store.Share.Gets(scopePath, sourcePath.Path, d.user.ID)
-	if err == errors.ErrNotExist {
+	if err == errors.ErrNotExist || len(s) == 0 {
 		return renderJSON(w, r, []*share.Link{})
 	}
-
+	// Overwrite the Source field with the source name from the query for each link
+	for _, link := range s {
+		link.Source = source
+	}
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("error getting share info from server")
 	}
@@ -102,11 +105,11 @@ func shareGetHandler(w http.ResponseWriter, r *http.Request, d *requestContext) 
 // @Tags Shares
 // @Accept json
 // @Produce json
-// @Param hash path string true "Hash of the share link to delete"
+// @Param hash query string true "Hash of the share link to delete"
 // @Success 200 "Share link deleted successfully"
 // @Failure 400 {object} map[string]string "Bad request - missing or invalid hash"
 // @Failure 500 {object} map[string]string "Internal server error"
-// @Router /api/shares/{hash} [delete]
+// @Router /api/shares [delete]
 func shareDeleteHandler(w http.ResponseWriter, r *http.Request, d *requestContext) (int, error) {
 	hash := r.URL.Query().Get("hash")
 
@@ -128,9 +131,8 @@ func shareDeleteHandler(w http.ResponseWriter, r *http.Request, d *requestContex
 // @Tags Shares
 // @Accept json
 // @Produce json
-// @Param body body share.CreateBody true "Share link creation parameters"
-// @Param path path string true "Source Path of the files to share"
-// @Param source path string true "Source name of the files to share"
+// @Param path query string true "Source Path of the files to share"
+// @Param source query string true "Source name of the files to share"
 // @Success 200 {object} share.Link "Created share link"
 // @Failure 400 {object} map[string]string "Bad request - failed to decode body"
 // @Failure 500 {object} map[string]string "Internal server error"
@@ -213,11 +215,12 @@ func sharePostHandler(w http.ResponseWriter, r *http.Request, d *requestContext)
 		PasswordHash: stringHash,
 		Token:        token,
 	}
-
 	if err := store.Share.Save(s); err != nil {
 		return http.StatusInternalServerError, err
 	}
 
+	// Overwrite the Source field with the source name from the query for each link
+	s.Source = sourceName
 	return renderJSON(w, r, s)
 }
 

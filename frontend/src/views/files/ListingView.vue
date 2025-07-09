@@ -92,7 +92,7 @@
         </div>
         <div v-if="numDirs > 0">
           <div class="header-items">
-            <h2>{{ $t("files.folders") }}</h2>
+            <h2>{{ $t("general.folders") }}</h2>
           </div>
         </div>
         <div
@@ -116,7 +116,7 @@
         </div>
         <div v-if="numFiles > 0">
           <div class="header-items">
-            <h2>{{ $t("files.files") }}</h2>
+            <h2>{{ $t("general.files") }}</h2>
           </div>
         </div>
         <div v-if="numFiles > 0" class="file-items" :class="{ lastGroup: numFiles > 0 }">
@@ -375,15 +375,26 @@ export default {
     // Remove event listeners before destroying this page.
     window.removeEventListener("keydown", this.keyEvent);
     window.removeEventListener("resize", this.windowsResize);
-    this.$el.removeEventListener("contextmenu", this.openContext);
-    this.$el.addEventListener("touchmove", this.handleTouchMove);
+    window.removeEventListener("click", this.clickClear);
+    window.removeEventListener("keyup", this.clearCtrKey);
+    window.removeEventListener("dragover", this.preventDefault);
 
-    // If Safari, remove touchstart listener
+    this.$el.removeEventListener("touchmove", this.handleTouchMove);
+    this.$el.removeEventListener("contextmenu", this.openContext);
+
+    // If Safari, remove touch/mouse listeners
     if (state.isSafari) {
       this.$el.removeEventListener("touchstart", this.openContextForSafari);
       this.$el.removeEventListener("mousedown", this.openContextForSafari);
       this.$el.removeEventListener("touchend", this.cancelContext);
       this.$el.removeEventListener("mouseup", this.cancelContext);
+    }
+
+    // Also clean up drag/drop listeners on the component's root element
+    if (state.user.permissions?.modify) {
+      this.$el.removeEventListener("dragenter", this.dragEnter);
+      this.$el.removeEventListener("dragleave", this.dragLeave);
+      this.$el.removeEventListener("drop", this.drop);
     }
   },
   methods: {

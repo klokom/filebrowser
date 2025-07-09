@@ -13,9 +13,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gtsteffaniak/filebrowser/backend/adapters/fs/files"
 	"github.com/gtsteffaniak/filebrowser/backend/common/settings"
 	"github.com/gtsteffaniak/filebrowser/backend/common/utils"
 	"github.com/gtsteffaniak/filebrowser/backend/indexing"
+	"github.com/gtsteffaniak/filebrowser/backend/indexing/iteminfo"
 	"github.com/gtsteffaniak/go-logger/logger"
 )
 
@@ -56,24 +58,32 @@ func addFile(path string, d *requestContext, tarWriter *tar.Writer, zipWriter *z
 	}
 	source := splitFile[0]
 	path = splitFile[1]
+
 	var err error
-	userScope := "/"
 	if d.user.Username != "publicUser" {
+		var userScope string
 		userScope, err = settings.GetScopeFromSourceName(d.user.Scopes, source)
 		if d.share == nil && err != nil {
 			return fmt.Errorf("source %s is not available for user %s", source, d.user.Username)
 		}
+		path = utils.JoinPathAsUnix(userScope, path)
 	}
 
 	idx := indexing.GetIndex(source)
 	if idx == nil {
 		return fmt.Errorf("source %s is not available", source)
 	}
-
-	realPath, _, err := idx.GetRealPath(userScope, path)
+	_, err = files.FileInfoFaster(iteminfo.FileOptions{
+		Access:   store.Access,
+		Username: d.user.Username,
+		Path:     path,
+		Source:   source,
+		Expand:   false,
+	})
 	if err != nil {
-		return fmt.Errorf("failed to get real path for %s: %v", path, err)
+		return err
 	}
+	realPath, _, _ := idx.GetRealPath(path)
 	info, err := os.Stat(realPath)
 	if err != nil {
 		return err

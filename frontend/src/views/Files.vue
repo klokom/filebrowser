@@ -31,7 +31,6 @@ import MarkdownViewer from "./files/MarkdownViewer.vue";
 //import WSIViewer from "./files/WSIViewer.vue";
 import { state, mutations, getters } from "@/store";
 import { url } from "@/utils";
-import { notify } from "@/notify";
 import router from "@/router";
 import { baseURL } from "@/utils/constants";
 import PopupPreview from "@/components/files/PopupPreview.vue";
@@ -150,12 +149,18 @@ export default {
           mutations.setCurrentSource(data.source);
         }
         document.title = `${document.title} - ${res.name}`;
+        mutations.replaceRequest(data);
       } catch (e) {
-        notify.showError(e);
         this.error = e;
         mutations.replaceRequest({});
+        if (e.status === 404) {
+          router.push({ name: "notFound" });
+        } else if (e.status === 403) {
+          router.push({ name: "forbidden" });
+        } else {
+          router.push({ name: "error" });
+        }
       } finally {
-        mutations.replaceRequest(data);
         mutations.setLoading("files", false);
       }
       setTimeout(() => {

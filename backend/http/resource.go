@@ -29,7 +29,6 @@ import (
 // @Produce json
 // @Param path query string true "Path to the resource"
 // @Param source query string false "Source name for the desired source, default is used if not provided"
-// @Param source query string false "Name for the desired source, default is used if not provided"
 // @Param content query string false "Include file content if true"
 // @Param checksum query string false "Optional checksum validation"
 // @Success 200 {object} iteminfo.FileInfo "Resource metadata"
@@ -53,11 +52,13 @@ func resourceGetHandler(w http.ResponseWriter, r *http.Request, d *requestContex
 	}
 	scopePath := utils.JoinPathAsUnix(userscope, path)
 	fileInfo, err := files.FileInfoFaster(iteminfo.FileOptions{
-		Path:    scopePath,
-		Modify:  d.user.Permissions.Modify,
-		Source:  source,
-		Expand:  true,
-		Content: r.URL.Query().Get("content") == "true",
+		Access:   store.Access,
+		Username: d.user.Username,
+		Path:     scopePath,
+		Modify:   d.user.Permissions.Modify,
+		Source:   source,
+		Expand:   true,
+		Content:  r.URL.Query().Get("content") == "true",
 	})
 	if err != nil {
 		return errToStatus(err), err
@@ -97,7 +98,6 @@ func resourceGetHandler(w http.ResponseWriter, r *http.Request, d *requestContex
 // @Produce json
 // @Param path query string true "Path to the resource"
 // @Param source query string false "Source name for the desired source, default is used if not provided"
-// @Param source query string false "Name for the desired source, default is used if not provided"
 // @Success 200 "Resource deleted successfully"
 // @Failure 403 {object} map[string]string "Forbidden"
 // @Failure 404 {object} map[string]string "Resource not found"
@@ -130,10 +130,12 @@ func resourceDeleteHandler(w http.ResponseWriter, r *http.Request, d *requestCon
 		return http.StatusForbidden, err
 	}
 	fileInfo, err := files.FileInfoFaster(iteminfo.FileOptions{
-		Path:   utils.JoinPathAsUnix(userscope, path),
-		Source: source,
-		Modify: d.user.Permissions.Modify,
-		Expand: false,
+		Access:   store.Access,
+		Username: d.user.Username,
+		Path:     utils.JoinPathAsUnix(userscope, path),
+		Source:   source,
+		Modify:   d.user.Permissions.Modify,
+		Expand:   false,
 	})
 	if err != nil {
 		return errToStatus(err), err
@@ -156,7 +158,7 @@ func resourceDeleteHandler(w http.ResponseWriter, r *http.Request, d *requestCon
 // @Tags Resources
 // @Accept json
 // @Produce json
-// @Param path query string true "Destination path where to place the files inside the destination source, a directory must end in / to create a directory"
+// @Param path query string true "url encoded destination path where to place the files inside the destination source, a directory must end in / to create a directory"
 // @Param source query string false "Name for the desired filebrowser destination source name, default is used if not provided"
 // @Param override query bool false "Override existing file if true"
 // @Success 200 "Resource created successfully"
@@ -178,6 +180,7 @@ func resourcePostHandler(w http.ResponseWriter, r *http.Request, d *requestConte
 			return http.StatusBadRequest, fmt.Errorf("invalid source encoding: %v", err)
 		}
 	}
+	fmt.Println("resourcePostHandler: source:", source, "path:", path)
 	if !d.user.Permissions.Modify {
 		return http.StatusForbidden, fmt.Errorf("user is not allowed to create or modify")
 	}
@@ -186,10 +189,12 @@ func resourcePostHandler(w http.ResponseWriter, r *http.Request, d *requestConte
 		return http.StatusForbidden, err
 	}
 	fileOpts := iteminfo.FileOptions{
-		Path:   utils.JoinPathAsUnix(userscope, path),
-		Source: source,
-		Modify: d.user.Permissions.Modify,
-		Expand: false,
+		Access:   store.Access,
+		Username: d.user.Username,
+		Path:     utils.JoinPathAsUnix(userscope, path),
+		Source:   source,
+		Modify:   d.user.Permissions.Modify,
+		Expand:   false,
 	}
 	// Directories creation on POST.
 	if strings.HasSuffix(path, "/") {
@@ -229,7 +234,6 @@ func resourcePostHandler(w http.ResponseWriter, r *http.Request, d *requestConte
 // @Produce json
 // @Param path query string true "Destination path where to place the files inside the destination source"
 // @Param source query string false "Source name for the desired source, default is used if not provided"
-// @Param source query string false "Name for the desired source, default is used if not provided"
 // @Success 200 "Resource updated successfully"
 // @Failure 403 {object} map[string]string "Forbidden"
 // @Failure 404 {object} map[string]string "Resource not found"
@@ -267,10 +271,12 @@ func resourcePutHandler(w http.ResponseWriter, r *http.Request, d *requestContex
 		return http.StatusForbidden, err
 	}
 	fileOpts := iteminfo.FileOptions{
-		Path:   utils.JoinPathAsUnix(userscope, path),
-		Source: source,
-		Modify: d.user.Permissions.Modify,
-		Expand: false,
+		Access:   store.Access,
+		Username: d.user.Username,
+		Path:     utils.JoinPathAsUnix(userscope, path),
+		Source:   source,
+		Modify:   d.user.Permissions.Modify,
+		Expand:   false,
 	}
 	err = files.WriteFile(fileOpts, r.Body)
 	return errToStatus(err), err
@@ -400,6 +406,8 @@ func patchAction(ctx context.Context, action, src, dst string, d *requestContext
 		idx := indexing.GetIndex(srcIndex)
 		srcPath := idx.MakeIndexPath(src)
 		fileInfo, err := files.FileInfoFaster(iteminfo.FileOptions{
+			Access:     store.Access,
+			Username:   d.user.Username,
 			Path:       srcPath,
 			Source:     srcIndex,
 			IsDir:      isSrcDir,
@@ -446,6 +454,6 @@ func mockData(w http.ResponseWriter, r *http.Request) {
 	if err != nil || err2 != nil {
 		return
 	}
-	mockDir := utils.CreateMockData(NumDirs, numFiles)
+	mockDir := indexing.CreateMockData(NumDirs, numFiles)
 	renderJSON(w, r, mockDir) // nolint:errcheck
 }

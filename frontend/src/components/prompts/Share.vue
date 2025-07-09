@@ -126,6 +126,7 @@ import { notify } from "@/notify";
 import { state, getters, mutations } from "@/store";
 import { shareApi, publicApi } from "@/api";
 import Clipboard from "clipboard";
+import { fromNow } from "@/utils/moment";
 
 export default {
   name: "share",
@@ -173,15 +174,18 @@ export default {
   },
   async beforeMount() {
     let path = state.req.path;
+    console.log("state.req", state.req);
     this.source = state.req.source;
     if (state.isSearchActive) {
       path = state.selected[0].path;
       this.source = state.selected[0].source;
     } else if (getters.selectedCount() === 1) {
       const selected = getters.getFirstSelected();
+      console.log("selected", selected);
       path = selected.path;
       this.source = selected.source;
       this.source = state.req.items[state.selected[0]].source;
+
     }
     // double encode # to fix issue with # in path
     // replace all # with %23
@@ -252,7 +256,7 @@ export default {
       }
     },
     humanTime(time) {
-      return getters.getTime(time);
+      return fromNow(time, state.user.locale)
     },
     buildLink(share) {
       return shareApi.getShareURL(share);
